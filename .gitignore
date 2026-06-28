@@ -1,0 +1,22 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# env
+.env
+backend/.env
+frontend/.env
+
+# node
+node_modules/
+dist/
+
+# os / editor
+.DS_Store
+.vscode/
+.idea/
+
+# typescript build info
+*.tsbuildinfo
