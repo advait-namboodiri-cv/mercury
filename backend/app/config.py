@@ -13,7 +13,7 @@ load_dotenv(_ENV_PATH)
 
 class Config:
     VAULT_PATH: str = os.getenv("VAULT_PATH", "")
-    MLX_MODEL: str = os.getenv("MLX_MODEL", "mlx-community/Qwen3-8B-4bit")
+    MLX_MODEL: str = os.getenv("MLX_MODEL", "mlx-community/Qwen3-14B-4bit")
     PORT: int = int(os.getenv("PORT", "8000"))
 
     @property
