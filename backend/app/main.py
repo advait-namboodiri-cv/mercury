@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from .compress import compress
 from .config import config
 from .model import status as model_status
+from .vault import VaultError, list_books, save_block
 
 app = FastAPI(title="mercury")
 
@@ -34,6 +35,42 @@ def compress_endpoint(req: CompressRequest) -> dict:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=500, detail=f"compression error: {exc}") from exc
+
+
+class Insight(BaseModel):
+    type: str
+    title: str
+    body: str
+    concepts: list[str] = []
+    verbatim_quote: str | None = None
+
+
+class SaveRequest(BaseModel):
+    book: str
+    insight: Insight
+    author: str | None = None
+    status: str | None = None
+    tags: list[str] = []
+
+
+@app.get("/books")
+def books_endpoint() -> dict:
+    """List existing book notes in the vault."""
+    try:
+        return {"books": list_books()}
+    except VaultError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/save")
+def save_endpoint(req: SaveRequest) -> dict:
+    """Append a confirmed insight block to its book note, creating it if needed."""
+    try:
+        return save_block(
+            req.book, req.insight.model_dump(), req.author, req.status, req.tags
+        )
+    except VaultError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/health")
