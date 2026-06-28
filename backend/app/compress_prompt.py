@@ -25,7 +25,7 @@ Definitions of type:
 Rules for each field:
 - type: pick the single best fit.
 - title: 4 to 6 words, plain and specific, no trailing punctuation. It is a label, not a sentence.
-- body: keep the reader's first person voice and meaning. Tighten rambling into 1 to 3 clear sentences. Do not add facts, opinions, or details they did not say. Do not flatten it into something generic; keep what makes it theirs.
+- body: rewrite in the reader's own first person voice. Cut filler, hedging, and repetition hard (drop "um", "like", "you know", "i think", "the thing is", and restated points), even when the reflection is already coherent. Aim for tight prose, usually 1 to 3 sentences. BUT if the reader recounts a story, example, or anecdote, keep it described in the body as a concrete moment, do not abstract it away into a generic lesson; a vivid example may run a little longer. Do not add facts, opinions, or details they did not say. Keep what makes it theirs.
 - concepts: 1 to 5 reusable ideas this touches, lowercase, for linking notes together across books (for example "loss aversion", "compounding", "habit formation"). Prefer general concepts a reader reuses across many books over names specific to this one book.
 - verbatim_quote: only fill this if the reader clearly quoted exact words from the book. Otherwise null. Never invent a quote.
 
