@@ -1,4 +1,12 @@
-"""Read and write the Obsidian vault: one markdown note per book."""
+"""Read and write the Obsidian vault: one folder per book, with its own notes.
+
+Layout:
+    Books/<Book Title>/<Book Title>.md   -> the book note (session blocks)
+    Books/<Book Title>/<concept>.md      -> promoted concept nodes (see concepts.py)
+
+Concept links are written as full vault-relative paths so the same word in two
+different books stays two separate graph nodes.
+"""
 from __future__ import annotations
 
 import re
@@ -13,7 +21,6 @@ class VaultError(Exception):
 
 
 def books_dir() -> Path:
-    """Resolve <vault>/Books, erroring if the vault path is unset/missing."""
     v = config.vault
     if v is None:
         raise VaultError("VAULT_PATH is not set")
@@ -22,13 +29,18 @@ def books_dir() -> Path:
     return v / "Books"
 
 
-def _safe_filename(title: str) -> str:
-    name = re.sub(r'[\\/:*?"<>|]', "-", title.strip())
-    return name or "Untitled"
+def safe_name(name: str) -> str:
+    cleaned = re.sub(r'[\\/:*?"<>|]', "-", name.strip())
+    return cleaned or "Untitled"
 
 
-def book_path(title: str) -> Path:
-    return books_dir() / f"{_safe_filename(title)}.md"
+def book_folder(title: str) -> Path:
+    return books_dir() / safe_name(title)
+
+
+def book_note_path(title: str) -> Path:
+    safe = safe_name(title)
+    return books_dir() / safe / f"{safe}.md"
 
 
 def _read_frontmatter(p: Path) -> dict:
@@ -48,19 +60,22 @@ def _read_frontmatter(p: Path) -> dict:
 
 
 def list_books() -> list[dict]:
-    """Return existing book notes with their frontmatter basics."""
+    """Return existing book notes (one per folder) with their frontmatter basics."""
     d = books_dir()
     if not d.exists():
         return []
     out = []
-    for p in sorted(d.glob("*.md")):
-        fm = _read_frontmatter(p)
+    for folder in sorted(p for p in d.iterdir() if p.is_dir()):
+        note = folder / f"{folder.name}.md"
+        if not note.exists():
+            continue
+        fm = _read_frontmatter(note)
         out.append(
             {
-                "title": fm.get("title") or p.stem,
+                "title": fm.get("title") or folder.name,
                 "author": fm.get("author") or None,
                 "status": fm.get("status") or None,
-                "file": p.name,
+                "folder": folder.name,
             }
         )
     return out
@@ -79,9 +94,14 @@ def _frontmatter(title: str, author: str | None, status: str | None, tags: list[
     )
 
 
-def _render_block(insight: dict) -> str:
+def _concept_link(book_safe: str, concept: str) -> str:
+    """A folder-scoped wikilink so this concept node is unique to this book."""
+    return f"[[Books/{book_safe}/{safe_name(concept)}|{concept}]]"
+
+
+def _render_block(insight: dict, book_safe: str) -> str:
     body = insight["body"].strip()
-    links = " ".join(f"[[{c}]]" for c in (insight.get("concepts") or []))
+    links = " ".join(_concept_link(book_safe, c) for c in (insight.get("concepts") or []))
     block = f"**{insight['type']} · {insight['title']}**\n{body}"
     if links:
         block += f" {links}"
@@ -98,14 +118,14 @@ def save_block(
     status: str | None = None,
     tags: list[str] | None = None,
 ) -> dict:
-    """Append a rendered insight block to a book note, creating it if needed."""
-    d = books_dir()
-    d.mkdir(parents=True, exist_ok=True)
-    p = book_path(book_title)
+    """Append a rendered insight block to a book note, creating its folder if needed."""
+    folder = book_folder(book_title)
+    folder.mkdir(parents=True, exist_ok=True)
+    p = book_note_path(book_title)
     created = not p.exists()
     today = date.today().isoformat()
     heading = f"## Session {today}"
-    block = _render_block(insight)
+    block = _render_block(insight, safe_name(book_title))
 
     if created:
         content = _frontmatter(book_title, author, status, tags or []) + "\n"
@@ -118,4 +138,9 @@ def save_block(
             content = f"{existing}\n\n{heading}\n\n{block}\n"
 
     p.write_text(content, encoding="utf-8")
-    return {"file": p.name, "path": str(p), "created": created, "session": today}
+    return {
+        "folder": folder.name,
+        "file": f"{folder.name}/{p.name}",
+        "created": created,
+        "session": today,
+    }
