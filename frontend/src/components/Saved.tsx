@@ -45,9 +45,13 @@ export default function Saved({ summary, onNext, onLibrary }: Props) {
             {summary.count === 1 ? "Your insight" : `Your ${summary.count} insights`} joined{" "}
             <em>{summary.book}</em>
             {summary.concepts.length > 0 &&
-              ` — ${summary.concepts.length} ${
+              `, ${summary.concepts.length} ${
                 summary.concepts.length === 1 ? "concept" : "concepts"
               } linked into its graph.`}
+          </p>
+          <p className="saved-sub">
+            {summary.duration} min · {summary.count}{" "}
+            {summary.count === 1 ? "insight" : "insights"} this session
           </p>
           <div className="vault-pill">
             <span className="vault-dot" />
