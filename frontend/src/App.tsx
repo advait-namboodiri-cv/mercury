@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { type Book, type Insight, getBooks, save } from "./api";
+import { type Book, type Insight, getBooks, saveSession } from "./api";
 import BookPicker from "./components/BookPicker";
 import NewBookForm from "./components/NewBookForm";
 import Capture from "./components/Capture";
+import BatchReview from "./components/BatchReview";
 import Saved from "./components/Saved";
+import Journal from "./components/Journal";
 
 export type SessionBook = {
   title: string;
@@ -12,15 +14,21 @@ export type SessionBook = {
   isNew: boolean;
 };
 
-type View = "picker" | "newbook" | "capture" | "saved";
+type View = "picker" | "newbook" | "capture" | "review" | "saved" | "journal";
 
-export type SavedSummary = { book: string; count: number; concepts: string[] };
+export type SavedSummary = {
+  book: string;
+  count: number;
+  concepts: string[];
+  duration: number;
+};
 
 export default function App() {
   const [view, setView] = useState<View>("picker");
   const [books, setBooks] = useState<Book[]>([]);
   const [booksError, setBooksError] = useState<string | null>(null);
   const [book, setBook] = useState<SessionBook | null>(null);
+  const [startedAt, setStartedAt] = useState<number>(0);
   const [session, setSession] = useState<Insight[]>([]);
   const [saving, setSaving] = useState(false);
   const [summary, setSummary] = useState<SavedSummary | null>(null);
@@ -39,24 +47,37 @@ export default function App() {
   const startSession = (b: SessionBook) => {
     setBook(b);
     setSession([]);
+    setStartedAt(Date.now());
     setView("capture");
   };
 
-  const endSession = async () => {
+  const updateInsight = (i: number, insight: Insight) =>
+    setSession((s) => s.map((x, j) => (j === i ? insight : x)));
+  const removeInsight = (i: number) => setSession((s) => s.filter((_, j) => j !== i));
+
+  const finalize = async () => {
     if (!book || session.length === 0) return;
     setSaving(true);
     try {
-      for (const insight of session) {
-        await save(book.title, insight, book.author, book.tags);
-      }
-      const concepts = [...new Set(session.flatMap((i) => i.concepts))];
-      setSummary({ book: book.title, count: session.length, concepts });
+      const duration = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
+      await saveSession(book.title, session, duration, book.author, book.tags);
+      setSummary({
+        book: book.title,
+        count: session.length,
+        concepts: [...new Set(session.flatMap((i) => i.concepts))],
+        duration,
+      });
       setView("saved");
     } catch (e) {
       alert(`Could not save to your vault: ${(e as Error).message}`);
     } finally {
       setSaving(false);
     }
+  };
+
+  const toLibrary = () => {
+    loadBooks();
+    setView("picker");
   };
 
   return (
@@ -69,6 +90,7 @@ export default function App() {
             startSession({ title: b.title, author: b.author, tags: b.tags, isNew: false })
           }
           onNew={() => setView("newbook")}
+          onJournal={() => setView("journal")}
         />
       )}
 
@@ -82,14 +104,23 @@ export default function App() {
       {view === "capture" && book && (
         <Capture
           book={book}
+          startedAt={startedAt}
           session={session}
+          onCapture={(insight) => setSession((s) => [...s, insight])}
+          onEnd={() => setView("review")}
+          onLibrary={toLibrary}
+        />
+      )}
+
+      {view === "review" && book && (
+        <BatchReview
+          book={book}
+          insights={session}
           saving={saving}
-          onKeep={(insight) => setSession((s) => [...s, insight])}
-          onEndSession={endSession}
-          onLibrary={() => {
-            loadBooks();
-            setView("picker");
-          }}
+          onChange={updateInsight}
+          onRemove={removeInsight}
+          onFinalize={finalize}
+          onBack={() => setView("capture")}
         />
       )}
 
@@ -97,12 +128,11 @@ export default function App() {
         <Saved
           summary={summary}
           onNext={() => book && startSession(book)}
-          onLibrary={() => {
-            loadBooks();
-            setView("picker");
-          }}
+          onLibrary={toLibrary}
         />
       )}
+
+      {view === "journal" && <Journal onLibrary={toLibrary} />}
     </div>
   );
 }
