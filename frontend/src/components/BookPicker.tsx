@@ -8,9 +8,10 @@ type Props = {
   error: string | null;
   onPick: (book: Book) => void;
   onNew: () => void;
+  onJournal: () => void;
 };
 
-export default function BookPicker({ books, error, onPick, onNew }: Props) {
+export default function BookPicker({ books, error, onPick, onNew, onJournal }: Props) {
   const totalInsights = books.reduce((n, b) => n + b.insightCount, 0);
 
   return (
@@ -20,9 +21,14 @@ export default function BookPicker({ books, error, onPick, onNew }: Props) {
           <span className="mark-dot" />
           <span className="mark-name">Mercury</span>
         </div>
-        <span className="header-meta">
-          {books.length} {books.length === 1 ? "book" : "books"} · {totalInsights} insights
-        </span>
+        <div className="header-right">
+          <button className="nav-link" onClick={onJournal}>
+            Journal
+          </button>
+          <span className="header-meta">
+            {books.length} {books.length === 1 ? "book" : "books"} · {totalInsights} insights
+          </span>
+        </div>
       </header>
 
       <div className="picker-body">
