@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .compress import compress
+from .concepts import sync as sync_concepts
 from .config import config
 from .model import status as model_status
 from .vault import VaultError, list_books, save_block
@@ -66,9 +67,11 @@ def books_endpoint() -> dict:
 def save_endpoint(req: SaveRequest) -> dict:
     """Append a confirmed insight block to its book note, creating it if needed."""
     try:
-        return save_block(
+        result = save_block(
             req.book, req.insight.model_dump(), req.author, req.status, req.tags
         )
+        result["concept_notes"] = sync_concepts(req.insight.concepts)
+        return result
     except VaultError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
