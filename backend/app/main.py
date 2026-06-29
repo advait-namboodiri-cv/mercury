@@ -10,7 +10,13 @@ from .concepts import book_concepts
 from .concepts import sync as sync_concepts
 from .config import config
 from .model import status as model_status
-from .vault import VaultError, list_books, save_block
+from .vault import (
+    VaultError,
+    append_session,
+    list_books,
+    list_sessions,
+    save_block,
+)
 
 app = FastAPI(title="mercury")
 
@@ -51,12 +57,12 @@ class Insight(BaseModel):
     verbatim_quote: str | None = None
 
 
-class SaveRequest(BaseModel):
+class SessionRequest(BaseModel):
     book: str
-    insight: Insight
+    insights: list[Insight]
     author: str | None = None
-    status: str | None = None
     tags: list[str] = []
+    duration_min: int = 0
 
 
 @app.get("/books")
@@ -68,15 +74,33 @@ def books_endpoint() -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/save")
-def save_endpoint(req: SaveRequest) -> dict:
-    """Append a confirmed insight block to its book note, creating it if needed."""
+@app.post("/session")
+def session_endpoint(req: SessionRequest) -> dict:
+    """Write a whole reading session: all insights, one concept sync, one journal entry."""
+    if not req.insights:
+        raise HTTPException(status_code=422, detail="a session needs at least one insight")
     try:
-        result = save_block(
-            req.book, req.insight.model_dump(), req.author, req.status, req.tags
-        )
-        result["concept_notes"] = sync_concepts(req.book)
-        return result
+        when = ""
+        for insight in req.insights:
+            result = save_block(req.book, insight.model_dump(), req.author, None, req.tags)
+            when = result["session"]
+        concept_notes = sync_concepts(req.book)
+        append_session(req.book, len(req.insights), req.duration_min, when)
+        return {
+            "book": req.book,
+            "count": len(req.insights),
+            "date": when,
+            "concept_notes": concept_notes,
+        }
+    except VaultError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/sessions")
+def sessions_endpoint() -> dict:
+    """Return the reading-session journal, newest first."""
+    try:
+        return {"sessions": list_sessions()}
     except VaultError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
