@@ -72,7 +72,7 @@ def save_endpoint(req: SaveRequest) -> dict:
         result = save_block(
             req.book, req.insight.model_dump(), req.author, req.status, req.tags
         )
-        result["concept_notes"] = sync_concepts(req.book, req.insight.concepts)
+        result["concept_notes"] = sync_concepts(req.book)
         return result
     except VaultError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
