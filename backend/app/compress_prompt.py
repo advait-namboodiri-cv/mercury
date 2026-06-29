@@ -20,7 +20,9 @@ The JSON must have exactly these fields:
 Definitions of type:
 - "insight": a realization or lesson the reader took away.
 - "claim": an assertion about how something works or is true.
-- "story": an anecdote, example, or narrative the reader is recounting.
+- "story": an anecdote, example, scene, or narrative the reader is recounting.
+
+Lean toward "story" whenever the reader recounts a specific event, scene, or anecdote from the book, even if they also draw a lesson from it. Use "insight" only when there is no concrete narrated event, just a realization. Use "claim" for a general assertion stated as fact.
 
 Rules for each field:
 - type: pick the single best fit.
