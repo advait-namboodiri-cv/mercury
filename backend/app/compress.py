@@ -80,14 +80,24 @@ def _extract_json(raw: str) -> str | None:
     return None
 
 
+def no_dashes(text: str) -> str:
+    """Strip em/en dashes the model may slip in, replacing with plain punctuation."""
+    return (
+        text.replace(" — ", ", ")
+        .replace("—", ", ")
+        .replace(" – ", ", ")
+        .replace("–", "-")
+    )
+
+
 def _coerce(obj: dict) -> dict | None:
     """Validate and normalize the parsed object; None if it is unusable."""
     t = str(obj.get("type", "insight")).strip().lower()
     if t not in ALLOWED_TYPES:
         t = "insight"
 
-    title = str(obj.get("title", "")).strip()
-    body = str(obj.get("body", "")).strip()
+    title = no_dashes(str(obj.get("title", "")).strip())
+    body = no_dashes(str(obj.get("body", "")).strip())
     if not body:
         return None  # an insight with no body is not usable
 
@@ -97,7 +107,7 @@ def _coerce(obj: dict) -> dict | None:
     concepts = [str(c).strip() for c in concepts if str(c).strip()][:5]
 
     quote = obj.get("verbatim_quote")
-    quote = str(quote).strip() or None if quote is not None else None
+    quote = no_dashes(str(quote).strip()) or None if quote is not None else None
 
     return {
         "type": t,

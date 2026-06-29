@@ -31,6 +31,8 @@ Rules for each field:
 - concepts: 1 to 5 reusable ideas this touches, lowercase, for linking notes together across books (for example "loss aversion", "compounding", "habit formation"). Prefer general concepts a reader reuses across many books over names specific to this one book.
 - verbatim_quote: only fill this if the reader clearly quoted exact words from the book. Otherwise null. Never invent a quote.
 
+Never use em dashes or en dashes anywhere in your output. Use commas, periods, or parentheses instead.
+
 Output valid JSON only: double quotes on every key and string, use null (not None), no trailing commas."""
 
 

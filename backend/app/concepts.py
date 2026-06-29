@@ -23,7 +23,8 @@ _LINK_RE = re.compile(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]")
 CONCEPT_SYSTEM = (
     "You write one short, plain definition for a personal notes glossary. "
     "Given a concept, reply with a single sentence of at most 20 words defining it "
-    "simply. No preamble, no quotes, no markdown, just the sentence."
+    "simply. No preamble, no quotes, no markdown, just the sentence. "
+    "Never use em dashes or en dashes; use commas or periods instead."
 )
 
 
@@ -108,7 +109,8 @@ def define(concept: str) -> str:
         sampler=make_sampler(temp=0.3), verbose=False,
     )
     text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
-    return " ".join(text.replace("`", "").strip().strip('"').split())
+    cleaned = " ".join(text.replace("`", "").strip().strip('"').split())
+    return cleaned.replace(" — ", ", ").replace("—", ", ").replace(" – ", ", ").replace("–", "-")
 
 
 def _strip_self_link(raw: str, book_safe: str, concept: str) -> str:
