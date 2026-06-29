@@ -161,3 +161,49 @@ def save_block(
         "created": created,
         "session": today,
     }
+
+
+def journal_path() -> Path:
+    v = config.vault
+    if v is None:
+        raise VaultError("VAULT_PATH is not set")
+    return v / "Reading Sessions.md"
+
+
+def append_session(book: str, count: int, duration_min: int, when: str) -> None:
+    """Append one reading session to the running journal note."""
+    p = journal_path()
+    noun = "insight" if count == 1 else "insights"
+    line = f"- {when} · {book} · {count} {noun} · {duration_min} min"
+    if p.exists():
+        p.write_text(
+            p.read_text(encoding="utf-8").rstrip() + "\n" + line + "\n", encoding="utf-8"
+        )
+    else:
+        p.write_text(f"# Reading Sessions\n\n{line}\n", encoding="utf-8")
+
+
+def list_sessions() -> list[dict]:
+    """Parse the journal note into reading-session records, newest first."""
+    p = journal_path()
+    if not p.exists():
+        return []
+    out = []
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("- "):
+            continue
+        parts = [x.strip() for x in line[2:].split("·")]
+        if len(parts) != 4:
+            continue
+        try:
+            out.append(
+                {
+                    "date": parts[0],
+                    "book": parts[1],
+                    "insights": int(parts[2].split()[0]),
+                    "duration": int(parts[3].split()[0]),
+                }
+            )
+        except (ValueError, IndexError):
+            continue
+    return list(reversed(out))
