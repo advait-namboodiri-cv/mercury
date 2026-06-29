@@ -34,10 +34,24 @@ Rules for each field:
 Output valid JSON only: double quotes on every key and string, use null (not None), no trailing commas."""
 
 
-def user_message(text: str, book: str | None, strict_retry: bool = False) -> str:
+def user_message(
+    text: str,
+    book: str | None,
+    strict_retry: bool = False,
+    existing_concepts: list[str] | None = None,
+) -> str:
     """Build the user turn; strict_retry adds a hard reminder after a bad parse."""
     book_line = f"Book: {book}" if book else "Book: (not specified)"
-    parts = [book_line, "", "Reflection:", text.strip()]
+    parts = [book_line, ""]
+    if existing_concepts:
+        parts += [
+            "Concepts already used in this book. Reuse one of these in the concepts "
+            "field whenever it fits the idea, instead of inventing a near duplicate. "
+            "Only add a new concept when the idea is genuinely not covered by these:",
+            ", ".join(existing_concepts),
+            "",
+        ]
+    parts += ["Reflection:", text.strip()]
     if strict_retry:
         parts += [
             "",

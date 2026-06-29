@@ -15,7 +15,9 @@ _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 _FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE)
 
 
-def _generate(text: str, book: str | None, strict_retry: bool) -> str:
+def _generate(
+    text: str, book: str | None, strict_retry: bool, existing_concepts: list[str] | None
+) -> str:
     """Run one generation pass and return the raw model text."""
     from mlx_lm import generate
     from mlx_lm.sample_utils import make_sampler
@@ -23,7 +25,10 @@ def _generate(text: str, book: str | None, strict_retry: bool) -> str:
     model, tokenizer = load()
     messages = [
         {"role": "system", "content": SYSTEM},
-        {"role": "user", "content": user_message(text, book, strict_retry)},
+        {
+            "role": "user",
+            "content": user_message(text, book, strict_retry, existing_concepts),
+        },
     ]
     try:
         prompt = tokenizer.apply_chat_template(
@@ -116,14 +121,21 @@ def _parse(raw: str) -> dict | None:
     return _coerce(obj)
 
 
-def compress(text: str, book: str | None = None) -> dict:
-    """Compress a reflection into the strict insight JSON, with one retry."""
+def compress(
+    text: str, book: str | None = None, existing_concepts: list[str] | None = None
+) -> dict:
+    """Compress a reflection into the strict insight JSON, with one retry.
+
+    existing_concepts is this book's current vocabulary; passing it lets the model
+    reuse a fitting concept instead of coining a near-duplicate, so the book's
+    graph connects across sessions.
+    """
     if not text or not text.strip():
         raise ValueError("reflection text is empty")
 
-    result = _parse(_generate(text, book, strict_retry=False))
+    result = _parse(_generate(text, book, False, existing_concepts))
     if result is None:
-        result = _parse(_generate(text, book, strict_retry=True))
+        result = _parse(_generate(text, book, True, existing_concepts))
     if result is None:
         raise ValueError("model did not return valid JSON after retry")
     return result
