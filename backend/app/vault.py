@@ -59,6 +59,20 @@ def _read_frontmatter(p: Path) -> dict:
     return fm
 
 
+def _parse_tags(raw: str) -> list[str]:
+    """Parse a frontmatter tags value like '[a, b]' into a list."""
+    return [t.strip() for t in raw.strip().lstrip("[").rstrip("]").split(",") if t.strip()]
+
+
+def _count_insights(text: str) -> int:
+    """Count insight blocks (lines that are a bold handle) in a book note."""
+    return sum(
+        1
+        for line in text.splitlines()
+        if (s := line.strip()).startswith("**") and s.endswith("**") and len(s) > 4
+    )
+
+
 def list_books() -> list[dict]:
     """Return existing book notes (one per folder) with their frontmatter basics."""
     d = books_dir()
@@ -69,12 +83,15 @@ def list_books() -> list[dict]:
         note = folder / f"{folder.name}.md"
         if not note.exists():
             continue
+        text = note.read_text(encoding="utf-8")
         fm = _read_frontmatter(note)
         out.append(
             {
                 "title": fm.get("title") or folder.name,
                 "author": fm.get("author") or None,
                 "status": fm.get("status") or None,
+                "tags": _parse_tags(fm.get("tags", "")),
+                "insightCount": _count_insights(text),
                 "folder": folder.name,
             }
         )
