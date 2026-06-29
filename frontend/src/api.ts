@@ -51,25 +51,43 @@ export async function compress(
   );
 }
 
-export type SaveResult = {
-  folder: string;
-  file: string;
-  created: boolean;
-  session: string;
+export type SessionResult = {
+  book: string;
+  count: number;
+  date: string;
   concept_notes: string[];
 };
 
-export async function save(
+export async function saveSession(
   book: string,
-  insight: Insight,
+  insights: Insight[],
+  durationMin: number,
   author?: string | null,
   tags?: string[],
-): Promise<SaveResult> {
+): Promise<SessionResult> {
   return asJson(
-    await fetch(`${API_BASE}/save`, {
+    await fetch(`${API_BASE}/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ book, insight, author: author ?? null, tags: tags ?? [] }),
+      body: JSON.stringify({
+        book,
+        insights,
+        author: author ?? null,
+        tags: tags ?? [],
+        duration_min: durationMin,
+      }),
     }),
   );
+}
+
+export type ReadingSession = {
+  date: string;
+  book: string;
+  insights: number;
+  duration: number;
+};
+
+export async function getSessions(): Promise<ReadingSession[]> {
+  const data = await asJson(await fetch(`${API_BASE}/sessions`));
+  return data.sessions;
 }
