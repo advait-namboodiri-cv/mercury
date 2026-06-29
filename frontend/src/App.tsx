@@ -1,66 +1,108 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { type Book, type Insight, getBooks, save } from "./api";
+import BookPicker from "./components/BookPicker";
+import NewBookForm from "./components/NewBookForm";
+import Capture from "./components/Capture";
+import Saved from "./components/Saved";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
-
-type Health = {
-  status: string;
-  model: {
-    framework: string;
-    model: string;
-    mlx_available: boolean;
-    model_cached: boolean;
-    loaded: boolean;
-  };
-  vault: { path: string | null; exists: boolean };
+export type SessionBook = {
+  title: string;
+  author: string | null;
+  tags: string[];
+  isNew: boolean;
 };
 
-export default function App() {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [error, setError] = useState<string | null>(null);
+type View = "picker" | "newbook" | "capture" | "saved";
 
-  useEffect(() => {
-    fetch(`${API_BASE}/health`)
-      .then((r) => r.json())
-      .then(setHealth)
-      .catch((e) => setError(String(e)));
+export type SavedSummary = { book: string; count: number; concepts: string[] };
+
+export default function App() {
+  const [view, setView] = useState<View>("picker");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [booksError, setBooksError] = useState<string | null>(null);
+  const [book, setBook] = useState<SessionBook | null>(null);
+  const [session, setSession] = useState<Insight[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [summary, setSummary] = useState<SavedSummary | null>(null);
+
+  const loadBooks = useCallback(() => {
+    getBooks()
+      .then((b) => {
+        setBooks(b);
+        setBooksError(null);
+      })
+      .catch((e) => setBooksError(String(e.message ?? e)));
   }, []);
 
-  return (
-    <main className="wrap">
-      <h1>mercury</h1>
-      <p className="tagline">book reflections, compressed into your vault</p>
+  useEffect(loadBooks, [loadBooks]);
 
-      <section className="card">
-        <h2>health</h2>
-        {error && <p className="bad">backend unreachable — {error}</p>}
-        {!health && !error && <p className="muted">checking…</p>}
-        {health && (
-          <ul className="status">
-            <Row label="backend" ok={health.status === "ok"} value={health.status} />
-            <Row label="mlx" ok={health.model.mlx_available} value={health.model.framework} />
-            <Row
-              label="model"
-              ok={health.model.model_cached}
-              value={`${health.model.model} ${health.model.model_cached ? "(cached)" : "(not downloaded)"}`}
-            />
-            <Row
-              label="vault"
-              ok={health.vault.exists}
-              value={health.vault.path ?? "not set"}
-            />
-          </ul>
-        )}
-      </section>
-    </main>
-  );
-}
+  const startSession = (b: SessionBook) => {
+    setBook(b);
+    setSession([]);
+    setView("capture");
+  };
 
-function Row({ label, ok, value }: { label: string; ok: boolean; value: string }) {
+  const endSession = async () => {
+    if (!book || session.length === 0) return;
+    setSaving(true);
+    try {
+      for (const insight of session) {
+        await save(book.title, insight, book.author, book.tags);
+      }
+      const concepts = [...new Set(session.flatMap((i) => i.concepts))];
+      setSummary({ book: book.title, count: session.length, concepts });
+      setView("saved");
+    } catch (e) {
+      alert(`Could not save to your vault: ${(e as Error).message}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <li>
-      <span className={ok ? "dot good" : "dot bad"} />
-      <span className="key">{label}</span>
-      <span className="val">{value}</span>
-    </li>
+    <div className="app">
+      {view === "picker" && (
+        <BookPicker
+          books={books}
+          error={booksError}
+          onPick={(b) =>
+            startSession({ title: b.title, author: b.author, tags: b.tags, isNew: false })
+          }
+          onNew={() => setView("newbook")}
+        />
+      )}
+
+      {view === "newbook" && (
+        <NewBookForm
+          onStart={(b) => startSession({ ...b, isNew: true })}
+          onCancel={() => setView("picker")}
+        />
+      )}
+
+      {view === "capture" && book && (
+        <Capture
+          book={book}
+          session={session}
+          saving={saving}
+          onKeep={(insight) => setSession((s) => [...s, insight])}
+          onEndSession={endSession}
+          onLibrary={() => {
+            loadBooks();
+            setView("picker");
+          }}
+        />
+      )}
+
+      {view === "saved" && summary && (
+        <Saved
+          summary={summary}
+          onNext={() => book && startSession(book)}
+          onLibrary={() => {
+            loadBooks();
+            setView("picker");
+          }}
+        />
+      )}
+    </div>
   );
 }
