@@ -26,13 +26,16 @@ app.add_middleware(
 class CompressRequest(BaseModel):
     text: str
     book: str | None = None
+    # concepts captured earlier this reading session but not yet saved to the vault
+    session_concepts: list[str] = []
 
 
 @app.post("/compress")
 def compress_endpoint(req: CompressRequest) -> dict:
     """Compress a raw reflection into the strict insight JSON."""
     try:
-        existing = book_concepts(req.book) if req.book else []
+        saved = book_concepts(req.book) if req.book else []
+        existing = list(dict.fromkeys(saved + req.session_concepts))
         return compress(req.text, req.book, existing)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
