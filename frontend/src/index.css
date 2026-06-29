@@ -18,8 +18,8 @@
   --border: rgba(124, 95, 196, 0.12);
   --border-soft: rgba(124, 95, 196, 0.08);
 
-  --serif: "Newsreader", Georgia, serif;
-  --sans: "Hanken Grotesk", system-ui, sans-serif;
+  --serif: "Lexend", system-ui, sans-serif;
+  --sans: "Lexend", system-ui, sans-serif;
 
   --r-window: 28px;
   --r-card: 22px;
@@ -92,7 +92,7 @@ body {
 }
 .window {
   width: 100%;
-  max-width: 1040px;
+  max-width: 1320px;
   background: var(--warm-white);
   border: 1px solid var(--border-soft);
   border-radius: var(--r-window);
