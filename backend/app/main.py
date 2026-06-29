@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .compress import compress
+from .concepts import book_concepts
 from .concepts import sync as sync_concepts
 from .config import config
 from .model import status as model_status
@@ -31,7 +32,8 @@ class CompressRequest(BaseModel):
 def compress_endpoint(req: CompressRequest) -> dict:
     """Compress a raw reflection into the strict insight JSON."""
     try:
-        return compress(req.text, req.book)
+        existing = book_concepts(req.book) if req.book else []
+        return compress(req.text, req.book, existing)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
@@ -70,7 +72,7 @@ def save_endpoint(req: SaveRequest) -> dict:
         result = save_block(
             req.book, req.insight.model_dump(), req.author, req.status, req.tags
         )
-        result["concept_notes"] = sync_concepts(req.insight.concepts)
+        result["concept_notes"] = sync_concepts(req.book, req.insight.concepts)
         return result
     except VaultError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
